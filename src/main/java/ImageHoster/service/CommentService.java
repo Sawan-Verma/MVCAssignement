@@ -12,7 +12,7 @@ public class CommentService {
 	@Autowired
 	private CommentRespository commentRepository;
 
-	// The method calls the createImage() method in the Repository and passes the
+	// The method calls the create comment() method in the Repository and passes the
 	// image to be persisted in the database
 	public void addComment(Comment comment) {
 		commentRepository.addComment(comment);

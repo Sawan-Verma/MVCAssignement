@@ -1,7 +1,6 @@
 package ImageHoster.controller;
 
 import java.io.IOException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
@@ -19,11 +18,9 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
-import ImageHoster.model.Comment;
 import ImageHoster.model.Image;
 import ImageHoster.model.Tag;
 import ImageHoster.model.User;
-import ImageHoster.service.CommentService;
 import ImageHoster.service.ImageService;
 import ImageHoster.service.TagService;
 
@@ -35,9 +32,6 @@ public class ImageController {
 
 	@Autowired
 	private TagService tagService;
-
-	@Autowired
-	private CommentService commentService;
 
 	// This method displays all the images in the user home page after successful
 	// login
@@ -54,7 +48,7 @@ public class ImageController {
 	// After getting the image from the database the details are shown
 	// First receive the dynamic parameter in the incoming request URL in a string
 	// variables 'id','title' and also the Model type object
-	// Call the getImageByID() method in the business logic to fetch all the
+	// Call the getImage() method in the business logic to fetch all the
 	// details of that image
 	// Add the image in the Model type object with 'image' as the key
 	// Return 'images/image.html' file
@@ -65,7 +59,7 @@ public class ImageController {
 	// this list is then sent to 'images/image.html' file and the tags are displayed
 	@RequestMapping("/images/{id}/{title}")
 	public String showImage(@PathVariable("id") int id, @PathVariable("title") String title, Model model) {
-		Image image = imageService.getImageByID(id);
+		Image image = imageService.getImage(id);
 		model.addAttribute("image", image);
 		model.addAttribute("comments", image.getComments());
 		model.addAttribute("tags", image.getTags());
@@ -134,9 +128,10 @@ public class ImageController {
 		String path = "";
 		User user = (User) session.getAttribute("loggeduser");
 		if (user != null && image != null) {
-			String tags = convertTagsToString(image.getTags());
 			model.addAttribute("image", image);
-			model.addAttribute("tags", tags);
+			model.addAttribute("tags", image.getTags());
+			model.addAttribute("comments", image.getComments());
+
 			if (user.getId() == image.getUser().getId()) {
 				path = "images/edit";
 			} else {
@@ -147,36 +142,6 @@ public class ImageController {
 		return path;
 	}
 
-	// This controller method is called when the request pattern is of type
-	// '/image/{imageId}/{imageTitle}/comments' and also the incoming request is of
-	// POST type
-	// The method receives all the details of the comment to be stored in the
-	// database, and now the comment will be sent to the business logic to be
-	// persisted in the database
-	// After you get the imageID, set the image by calling 'getImage(id)' and set
-	// the user of the image by getting the logged
-	// in user from the Http Session
-	// Set the local date on which the comment is posted
-	// Set the test of the comment posted
-	// After storing the comment, this method redirects to the 'showImage()
-	// displaying all comments and the image
-
-	// Get the 'text' request parameter using @RequestParam annotation which is just
-	// a string
-	@RequestMapping(value = "/image/{imageId}/{imageTitle}/comments", method = RequestMethod.POST)
-	public String createComment(@PathVariable("imageId") int id, @PathVariable("imageTitle") String title,
-			@RequestParam("comment") String text, HttpSession session, Model model) throws IOException {
-		User user = (User) session.getAttribute("loggeduser");
-		Image image = imageService.getImage(id);
-		Comment comment = new Comment();
-		comment.setText(text);
-		comment.setCreatedDate(LocalDate.now());
-		comment.setUser(user);
-		comment.setImage(image);
-		commentService.addComment(comment);
-
-		return "redirect:/images/" + id + "/" + title;
-	}
 	// This controller method is called when the request pattern is of type
 	// 'images/edit' and also the incoming request is of PUT type
 	// The method receives the imageFile, imageId, updated image, along with the
@@ -226,18 +191,18 @@ public class ImageController {
 	// Looks for a controller method with request mapping of type '/images'
 	@RequestMapping(value = "/deleteImage", method = RequestMethod.DELETE)
 	public String deleteImageSubmit(@RequestParam(name = "imageId") Integer imageId, HttpSession session, Model model) {
-		String error = "Only the owner of the image can edit the image";
+		String error = "Only the owner of the image can delete the image";
 		Image image = imageService.getImage(imageId);
 		User user = (User) session.getAttribute("loggeduser");
 		String path = "";
+		
 		if (user != null && image != null) {
 			if (user.getId() == image.getUser().getId()) {
 				imageService.deleteImage(imageId);
 				path = "redirect:/images";
 			} else {
-				String tags = convertTagsToString(image.getTags());
 				model.addAttribute("image", image);
-				model.addAttribute("tags", tags);
+				model.addAttribute("tags", image.getTags());
 				model.addAttribute("comments", image.getComments());
 				model.addAttribute("deleteError", error);
 				path = "images/image";

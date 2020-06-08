@@ -44,10 +44,10 @@ public class UserController {
 	@RequestMapping(value = "users/registration", method = RequestMethod.POST)
 	public String registerUser(User user, Model model) {
 		String path = "";
-		String error = "Invalid password";
+		String error = "Password must contain atleast 1 alphabet, 1 number & 1 special character";
 		if (user.getPassword().matches("((?=.*\\d)(?=.*[a-zA-Z])(?=.*[\\W]).{3,})")) {
 			userService.registerUser(user);
-			path = "redirect:/users/login";
+			path = "users/login";
 		} else {
 			User newUser = new User();
 			UserProfile profile = new UserProfile();
