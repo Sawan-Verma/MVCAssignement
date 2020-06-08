@@ -45,7 +45,7 @@ public class UserController {
 	public String registerUser(User user, Model model) {
 		String path = "";
 		String error = "Invalid password";
-		if (user.getPassword().matches("(?=.*\\d)(?=.*[A-Z,a-z])(?=.*[^\\w\\d\\s:])([^\\s])")) {
+		if (user.getPassword().matches("((?=.*\\d)(?=.*[a-zA-Z])(?=.*[\\W]).{3,})")) {
 			userService.registerUser(user);
 			path = "redirect:/users/login";
 		} else {

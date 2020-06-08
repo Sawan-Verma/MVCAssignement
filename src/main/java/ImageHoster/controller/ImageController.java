@@ -1,10 +1,15 @@
 package ImageHoster.controller;
 
-import ImageHoster.model.Image;
-import ImageHoster.model.Tag;
-import ImageHoster.model.User;
-import ImageHoster.service.ImageService;
-import ImageHoster.service.TagService;
+import java.io.IOException;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Date;
+import java.util.List;
+import java.util.StringTokenizer;
+
+import javax.servlet.http.HttpSession;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,9 +19,13 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpSession;
-import java.io.IOException;
-import java.util.*;
+import ImageHoster.model.Comment;
+import ImageHoster.model.Image;
+import ImageHoster.model.Tag;
+import ImageHoster.model.User;
+import ImageHoster.service.CommentService;
+import ImageHoster.service.ImageService;
+import ImageHoster.service.TagService;
 
 @Controller
 public class ImageController {
@@ -26,6 +35,9 @@ public class ImageController {
 
 	@Autowired
 	private TagService tagService;
+
+	@Autowired
+	private CommentService commentService;
 
 	// This method displays all the images in the user home page after successful
 	// login
@@ -38,22 +50,24 @@ public class ImageController {
 
 	// This method is called when the details of the specific image with
 	// corresponding title are to be displayed
-	// The logic is to get the image from the databse with corresponding title.
+	// The logic is to get the image from the database with corresponding id.
 	// After getting the image from the database the details are shown
 	// First receive the dynamic parameter in the incoming request URL in a string
-	// variable 'title' and also the Model type object
-	// Call the getImageByTitle() method in the business logic to fetch all the
+	// variables 'id','title' and also the Model type object
+	// Call the getImageByID() method in the business logic to fetch all the
 	// details of that image
 	// Add the image in the Model type object with 'image' as the key
 	// Return 'images/image.html' file
 
-	// Also now you need to add the tags of an image in the Model type object
-	// Here a list of tags is added in the Model type object
+	// Also now you need to add the tags and comments of an image in the Model type
+	// object
+	// Here a list of tags and comments are added in the Model type object
 	// this list is then sent to 'images/image.html' file and the tags are displayed
 	@RequestMapping("/images/{id}/{title}")
 	public String showImage(@PathVariable("id") int id, @PathVariable("title") String title, Model model) {
 		Image image = imageService.getImageByID(id);
 		model.addAttribute("image", image);
+		model.addAttribute("comments", image.getComments());
 		model.addAttribute("tags", image.getTags());
 		return "images/image";
 	}
@@ -134,6 +148,36 @@ public class ImageController {
 	}
 
 	// This controller method is called when the request pattern is of type
+	// '/image/{imageId}/{imageTitle}/comments' and also the incoming request is of
+	// POST type
+	// The method receives all the details of the comment to be stored in the
+	// database, and now the comment will be sent to the business logic to be
+	// persisted in the database
+	// After you get the imageID, set the image by calling 'getImage(id)' and set
+	// the user of the image by getting the logged
+	// in user from the Http Session
+	// Set the local date on which the comment is posted
+	// Set the test of the comment posted
+	// After storing the comment, this method redirects to the 'showImage()
+	// displaying all comments and the image
+
+	// Get the 'text' request parameter using @RequestParam annotation which is just
+	// a string
+	@RequestMapping(value = "/image/{imageId}/{imageTitle}/comments", method = RequestMethod.POST)
+	public String createComment(@PathVariable("imageId") int id, @PathVariable("imageTitle") String title,
+			@RequestParam("comment") String text, HttpSession session, Model model) throws IOException {
+		User user = (User) session.getAttribute("loggeduser");
+		Image image = imageService.getImage(id);
+		Comment comment = new Comment();
+		comment.setText(text);
+		comment.setCreatedDate(LocalDate.now());
+		comment.setUser(user);
+		comment.setImage(image);
+		commentService.addComment(comment);
+
+		return "redirect:/images/" + id + "/" + title;
+	}
+	// This controller method is called when the request pattern is of type
 	// 'images/edit' and also the incoming request is of PUT type
 	// The method receives the imageFile, imageId, updated image, along with the
 	// Http Session
@@ -194,7 +238,8 @@ public class ImageController {
 				String tags = convertTagsToString(image.getTags());
 				model.addAttribute("image", image);
 				model.addAttribute("tags", tags);
-				model.addAttribute("editError", error);
+				model.addAttribute("comments", image.getComments());
+				model.addAttribute("deleteError", error);
 				path = "images/image";
 			}
 		}
